@@ -1,116 +1,360 @@
+import random
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import Canvas, Entry, Button, PhotoImage, messagebox, ttk, simpledialog
+from datetime import datetime
+from pathlib import Path
+import threading
+import time
+
+class LoginApp:
+    def __init__(self, root):
+        self.root = root
+        root.title("Login - Omertà Bank")
+        root.geometry("313x486")
+        root.configure(bg="#967721")
+        root.resizable(False, False)
+        self.assets_path = Path(r"D:\OmertàBnk\build\assets\frame0")
+
+        # Canvas
+        canvas = Canvas(
+            root,
+            bg="#967721",
+            height=486,
+            width=313,
+            bd=0,
+            highlightthickness=0,
+            relief="ridge"
+        )
+        canvas.place(x=0, y=0)
+
+        # Rettangolo sfondo
+        canvas.create_rectangle(
+            8.0,
+            7.0,
+            305.0,
+            479.0,
+            fill="#6A4E00",
+            outline=""
+        )
+
+        # Immagine
+        image_image_1 = PhotoImage(file=self.relative_to_assets("image_1.png"))
+        canvas.create_image(156.0, 107.0, image=image_image_1)
+
+        # Testo benvenuto
+        canvas.create_text(
+            80.0,
+            215.0,
+            anchor="nw",
+            text="BENVENUTO!",
+            fill="#FFFFFF",
+            font=("Inter Black", 24 * -1)
+        )
+        canvas.create_text(
+            50.0,
+            243.0,
+            anchor="nw",
+            text="Inserisci le tue credenziali",
+            fill="#FFFFFF",
+            font=("Inter Medium", 20 * -1)
+        )
+
+        # Campi di input
+        canvas.create_text(
+            15.0,
+            284.0,
+            anchor="nw",
+            text="Nome:\n\nCognome:\nData di nascita (DD/MM/YYYY)",
+            fill="#FFFFFF",
+            font=("Inter Medium", 20 * -1)
+        )
+
+        # Input nome
+        self.nome_entry = Entry(
+            bd=0,
+            bg="#D9D9D9",
+            fg="#000716",
+            highlightthickness=0
+        )
+        self.nome_entry.place(x=119.0, y=284.0, width=173.0, height=19.0)
+
+        # Input cognome
+        self.cognome_entry = Entry(
+            bd=0,
+            bg="#D9D9D9",
+            fg="#000716",
+            highlightthickness=0
+        )
+        self.cognome_entry.place(x=119.0, y=331.0, width=173.0, height=19.0)
+
+        # Input data di nascita
+        self.data_nascita_entry = Entry(
+            bd=0,
+            bg="#D9D9D9",
+            fg="#000716",
+            highlightthickness=0
+        )
+        self.data_nascita_entry.place(x=119.0, y=383.0, width=173.0, height=19.0)
+
+        # Pulsante login
+        button_image_1 = PhotoImage(file=self.relative_to_assets("button_1.png"))
+        button_1 = Button(
+            image=button_image_1,
+            borderwidth=0,
+            highlightthickness=0,
+            command=self.verifica_login,
+            relief="flat"
+        )
+        button_1.place(x=83.0, y=433.0, width=147.0, height=40.0)
+        self.button_image_1 = button_image_1  # Prevent garbage collection of image
+        self.image_image_1 = image_image_1
+
+    def relative_to_assets(self, path: str) -> Path:
+        return self.assets_path / Path(path)
+
+    def verifica_login(self):
+        nome = self.nome_entry.get().strip()
+        cognome = self.cognome_entry.get().strip()
+        data_nascita = self.data_nascita_entry.get().strip()
+
+        # Validazione campi
+        if not nome or not cognome or not data_nascita:
+            messagebox.showerror("Errore", "Tutti i campi devono essere compilati.")
+            return
+
+        # Validazione della data di nascita
+        try:
+            data_nascita_parsed = datetime.strptime(data_nascita, "%d/%m/%Y")
+        except ValueError:
+            messagebox.showerror("Errore", "La data di nascita deve essere nel formato DD/MM/YYYY.")
+            return
+
+        # Calcolo età
+        oggi = datetime.today()
+        eta = oggi.year - data_nascita_parsed.year - (
+            (oggi.month, oggi.day) < (data_nascita_parsed.month, data_nascita_parsed.day)
+        )
+
+        if eta < 18:
+            messagebox.showerror("Errore", "Devi avere almeno 18 anni per accedere.")
+            return
+
+        # Successo nel login
+        self.root.destroy()  # Chiudi la finestra di login
+        avvia_conto_bancario(nome, cognome,data_nascita)
+
 
 class OmertaBank:
-    def __init__(self, root):
-        self.saldo_iniziale = 1500  
-        self.saldo = self.saldo_iniziale
+    def relative_to_assets(self, path: str) -> Path:
+        return self.assets_path / Path(path)
+    def __init__(self, root, nome, cognome, data_nascita):
+        self.assets_path = Path(r"D:\OmertàBnk\build\assetsprincipale\frame1")
+        self.saldo = 1000.0
         self.movimenti = []
+        self.interesse_attivo = True
+        self.nome = nome
+        self.cognome = cognome
+        self.data_nascita = data_nascita
 
-        root.title("Omertà Bank")
-        root.geometry("600x500")
-        root.configure(bg="#f1f1f1")
+        root.title("Gestione Conto Bancario")
+        root.geometry("1122x719")
+        root.configure(bg="#C5C5C5")
 
-        self.title_label = tk.Label(root, text="Omertà Bank", font=("Arial", 24, "bold"), bg="#f1f1f1", fg="#6b4e17")
-        self.title_label.pack(pady=10)
+        canvas = tk.Canvas(root, bg="#C5C5C5", height=719, width=1122, bd=0, highlightthickness=0, relief="ridge")
+        canvas.place(x=0, y=0)
 
-        self.saldo_label = tk.Label(root, text=f"Saldo Totale: {self.saldo:.2f} €", font=("Arial", 16), bg="#f1f1f1")
-        self.saldo_label.pack(pady=10)
 
-        self.input_frame = tk.Frame(root, bg="#f1f1f1")
-        self.input_frame.pack(pady=20)
 
-        self.importo_label = tk.Label(self.input_frame, text="Importo:", bg="#f1f1f1")
-        self.importo_label.grid(row=0, column=0, padx=5)
-        self.importo_entry = tk.Entry(self.input_frame)
-        self.importo_entry.grid(row=0, column=1, padx=5)
+        
+        image_1 = PhotoImage(file=self.relative_to_assets("image_1.png"))
+        canvas.create_image(999.0, 237.0, image=image_1)
+        self.image_1 = image_1
+        canvas.create_rectangle(0.0, 0.0, 1122.0, 164.0, fill="#967721", outline="")
+        canvas.create_rectangle(6.0, 7.0, 1115.0, 158.0, fill="#6A4E00", outline="")
+        canvas.create_text(243.0,20.0,anchor="nw",text="Omertà Bank",fill="#FFFFFF",font=("Kumar One Normale", 96 ))
+        
+        image_2 = PhotoImage(file=self.relative_to_assets("image_2.png"))
+        canvas.create_image(120.0, 80.0, image=image_2)
+        self.image_2 = image_2
 
-        self.motivazione_label = tk.Label(self.input_frame, text="Motivazione:", bg="#f1f1f1")
-        self.motivazione_label.grid(row=1, column=0, padx=5)
-        self.motivazione_entry = tk.Entry(self.input_frame)
-        self.motivazione_entry.grid(row=1, column=1, padx=5)
+        image_3 = PhotoImage(file=self.relative_to_assets("image_3.png"))
+        canvas.create_image(286.0, 265.0, image=image_3)
+        self.image_3 = image_3
 
-        self.entrata_button = tk.Button(self.input_frame, text="Entrata", bg="#6b4e17", fg="white", command=self.aggiungi_entrata)
-        self.entrata_button.grid(row=2, column=0, pady=10)
+        image_4 = PhotoImage(file=self.relative_to_assets("image_4.png"))
+        canvas.create_image(92.0, 265.0, image=image_4)
+        self.image_4 = image_4
 
-        self.uscita_button = tk.Button(self.input_frame, text="Uscita", bg="#6b4e17", fg="white", command=self.aggiungi_uscita)
-        self.uscita_button.grid(row=2, column=1, pady=10)
+        image_5 = PhotoImage(file=self.relative_to_assets("image_5.png"))
+        canvas.create_image(92.0, 265.0, image=image_5)
+        self.image_5 = image_5
 
-        self.movimenti_frame = tk.Frame(root, bg="#f1f1f1")
-        self.movimenti_frame.pack(pady=20, fill="both", expand=True)
+        image_6 = PhotoImage(file=self.relative_to_assets("image_6.png"))
+        canvas.create_image(641.0, 619, image=image_6)
+        self.image_6 = image_6
 
-        self.movimenti_label = tk.Label(self.movimenti_frame, text="Cronologia Transazioni:", bg="#f1f1f1", font=("Arial", 14))
-        self.movimenti_label.pack(anchor="w", padx=10)
+        image_7 = PhotoImage(file=self.relative_to_assets("image_7.png"))
+        canvas.create_image(1060, 622, image=image_7)
+        self.image_7= image_7
 
-        self.movimenti_listbox = tk.Listbox(self.movimenti_frame, height=10, width=60)
-        self.movimenti_listbox.pack(padx=10, pady=10)
+        canvas.create_text(169.0, 208.0, anchor="nw", text="SALDO TOTALE:", fill="#FFFFFF", font=("Kameron Bold", 24 * -1))
+        self.saldo_label = tk.Label(root, text=f"€{self.saldo:.2f}",fg="#FFFFFF",background="#967721", font=("Helvetica", 25, "bold"),)
+        self.saldo_label.place(x=200, y=250)
 
-        self.reset_button = tk.Button(root, text="Reset", bg="#6b4e17", fg="white", command=self.reset_saldo)
-        self.reset_button.pack(pady=10)
+        
+        button_image_1 = PhotoImage(file=self.relative_to_assets("button_2.png"))
+        button_1 = Button(
+        image=button_image_1,
+            borderwidth=0,
+            highlightthickness=0,
+            command=self.gioco_azzardo,
+            relief="flat"
+        )
+        button_1.place(x=615, y=398, width=479, height=147)
+        
+        
+        self.buttons_frame = ttk.Frame(root)
+        self.buttons_frame.place(x=615, y=398, width=479, height=147)
 
-        self.start_timer()
+        canvas.create_rectangle(29.0, 363.0, 573.0, 675.0, fill="#967721", outline="")
+        canvas.create_rectangle(603.0, 363.0, 1103.0, 566.0, fill="#967721", outline="")
+        canvas.create_rectangle(40.0, 398.0, 562.0, 664.0, fill="#D9D9D9", outline="")
+        canvas.create_rectangle(615.0, 398.0, 1094.0, 545.0, fill="#D9D9D9", outline="")
+        canvas.create_text(391.0, 682.0, anchor="nw", text="Alla banca Omertà, i segreti hanno sempre un conto chiuso.", fill="#000000", font=("Kameron Bold", 24 * -1))
+        canvas.create_text(40.0, 368.0, anchor="nw", text="Cronologia transizioni:", fill="#FFFFFF", font=("Kameron Bold", 24 * -1))
+        canvas.create_text(614.0, 368.0, anchor="nw", text="Tasti Azione:", fill="#FFFFFF", font=("Kameron Bold", 24 * -1))
+
+    
+        ttk.Button(self.buttons_frame, text="Acquisto", command=self.acquisto).grid(row=0, column=0, padx=5, pady=5)
+        ttk.Button(self.buttons_frame, text="Rimborso", command=self.rimborso).grid(row=0, column=1, padx=5, pady=5)
+        ttk.Button(self.buttons_frame, text="Investimento", command=self.investimento).grid(row=0, column=2, padx=5, pady=5)
+        ttk.Button(self.buttons_frame, text="Paga Bolletta", command=self.paga_bolletta).grid(row=1, column=0, padx=5, pady=5)
+        ttk.Button(self.buttons_frame, text="Donazione", command=self.donazione).grid(row=1, column=1, padx=5, pady=5)
+        ttk.Button(self.buttons_frame, text="Gioco d'Azzardo", command=self.gioco_azzardo).grid(row=1, column=2, padx=5, pady=5)
+
+
+
+
+        
+
+        self.movimenti_box = tk.Text(root,height=15,width=60,state='disabled',wrap='word',bg="#ffffff",fg="#333333")
+        self.movimenti_box.place(x=40, y=398, width=522, height=266)
+
+
+        self.interessi_thread = threading.Thread(target=self.aggiungi_interesse_periodico, daemon=True)
+        self.interessi_thread.start()
+
+
+    def relative_to_assets(self, path: str) -> Path:
+        return self.assets_path / Path(path)
 
     def aggiorna_saldo(self):
-        self.saldo_label.config(text=f"Saldo Totale: {self.saldo:.2f} €")
+        self.saldo_label.config(text=f"€{self.saldo:.2f}")
 
-    def aggiungi_movimento(self, tipo, importo, motivazione):
-        movimento = f"{tipo}: {importo:.2f} € - {motivazione}"
-        self.movimenti.append(movimento)
-        self.movimenti_listbox.insert(tk.END, movimento)
+    def aggiungi_movimento(self, descrizione):
+        self.movimenti.append(descrizione)
+        self.movimenti_box.config(state='normal')
+        self.movimenti_box.insert(tk.END, descrizione + "\n")
+        self.movimenti_box.config(state='disabled')
 
-    def aggiungi_entrata(self):
+    def valida_importo(self, importo):
         try:
-            importo = float(self.importo_entry.get())
-            motivazione = self.motivazione_entry.get().strip()
-            if importo <= 0:
-                raise ValueError("Importo deve essere positivo.")
-            if not motivazione:
-                raise ValueError("La motivazione non può essere vuota.")
-            self.saldo += importo
+            valore = float(importo)
+            if valore > 0:
+                return valore
+            else:
+                raise ValueError
+        except ValueError:
+            messagebox.showerror("Errore", "Inserire un importo valido (numero positivo).")
+            return None
+
+    def acquisto(self):
+        importo = simpledialog.askstring("Acquisto", "Inserisci l'importo dell'acquisto:")
+        valore = self.valida_importo(importo)
+        if valore is not None and valore <= self.saldo:
+            motivazione = simpledialog.askstring("Motivazione", "Inserisci una motivazione per l'acquisto:")
+            if motivazione:
+                self.saldo -= valore
+                self.aggiorna_saldo()
+                self.aggiungi_movimento(f"Acquisto: -€{valore:.2f}, Motivazione: {motivazione}")
+        elif valore is not None:
+            messagebox.showwarning("Fondi Insufficienti", "Il saldo non è sufficiente per completare l'acquisto.")
+
+    def rimborso(self):
+        importo = simpledialog.askstring("Rimborso", "Inserisci l'importo da aggiungere:")
+        valore = self.valida_importo(importo)
+        if valore is not None:
+            motivazione = simpledialog.askstring("Motivazione", "Inserisci una motivazione per il rimborso:")
+            if motivazione:
+                self.saldo += valore
+                self.aggiorna_saldo()
+                self.aggiungi_movimento(f"Rimborso: +€{valore:.2f}, Motivazione: {motivazione}")
+
+    def investimento(self):
+        importo = simpledialog.askstring("Investimento", "Inserisci l'importo da investire:")
+        valore = self.valida_importo(importo)
+        if valore is not None and valore <= self.saldo:
+            self.saldo -= valore
+            risultato = valore * (1.5 if random.random() > 0.5 else 0.5)
+            self.saldo += risultato
             self.aggiorna_saldo()
-            self.aggiungi_movimento("Entrata", importo, motivazione)
-            self.importo_entry.delete(0, tk.END)
-            self.motivazione_entry.delete(0, tk.END)
-        except ValueError as e:
-            messagebox.showerror("Errore", str(e))
+            self.aggiungi_movimento(f"Investimento: -€{valore:.2f}, Ritorno: +€{risultato:.2f}")
+        elif valore is not None:
+            messagebox.showwarning("Fondi Insufficienti", "Il saldo non è sufficiente per investire.")
 
-    def aggiungi_uscita(self):
-        try:
-            importo = float(self.importo_entry.get())
-            motivazione = self.motivazione_entry.get().strip()
-            if importo <= 0:
-                raise ValueError("Importo deve essere positivo.")
-            if importo > self.saldo:
-                raise ValueError("Saldo insufficiente!")
-            if not motivazione:
-                raise ValueError("La motivazione non può essere vuota.")
-            self.saldo -= importo
+    def paga_bolletta(self):
+        importo = simpledialog.askstring("Pagamento Bolletta", "Inserisci l'importo della bolletta:")
+        valore = self.valida_importo(importo)
+        if valore is not None and valore <= self.saldo:
+            self.saldo -= valore
             self.aggiorna_saldo()
-            self.aggiungi_movimento("Uscita", importo, motivazione)
-            self.importo_entry.delete(0, tk.END)
-            self.motivazione_entry.delete(0, tk.END)
-        except ValueError as e:
-            messagebox.showerror("Errore", str(e))
+            self.aggiungi_movimento(f"Bolletta pagata: -€{valore:.2f}")
+        elif valore is not None:
+            messagebox.showwarning("Fondi Insufficienti", "Il saldo non è sufficiente per pagare la bolletta.")
 
-    def reset_saldo(self):
-        self.saldo = self.saldo_iniziale
-        self.movimenti.clear()
-        self.movimenti_listbox.delete(0, tk.END)
-        self.aggiorna_saldo()
-        messagebox.showinfo("Reset", "Il saldo è stato resettato a 1500 € e i movimenti sono stati eliminati.")
+    def donazione(self):
+        importo = simpledialog.askstring("Donazione", "Inserisci l'importo della donazione:")
+        valore = self.valida_importo(importo)
+        if valore is not None and valore <= self.saldo:
+            self.saldo -= valore
+            self.aggiorna_saldo()
+            self.aggiungi_movimento(f"Donazione: -€{valore:.2f}")
+        elif valore is not None:
+            messagebox.showwarning("Fondi Insufficienti", "Il saldo non è sufficiente per fare la donazione.")
 
-    def entrata_automatica(self):
-        importo = 1500
-        motivazione = "Stipendio e rapine riuscite"
-        self.saldo += importo
-        self.aggiungi_movimento("Entrata Automatica", importo, motivazione)
-        self.aggiorna_saldo()
+    def gioco_azzardo(self):
+        importo = simpledialog.askstring("Gioco d'Azzardo", "Inserisci l'importo della scommessa:")
+        valore = self.valida_importo(importo)
+        if valore is not None and valore <= self.saldo:
+            self.saldo -= valore
+            if random.random() > 0.5:
+                vincita = valore * 2
+                self.saldo += vincita
+                self.aggiungi_movimento(f"Scommessa vinta: +€{vincita:.2f}")
+            else:
+                self.aggiungi_movimento(f"Scommessa persa: -€{valore:.2f}")
+            self.aggiorna_saldo()
+        elif valore is not None:
+            messagebox.showwarning("Fondi Insufficienti", "Il saldo non è sufficiente per fare la scommessa.")
 
-    def start_timer(self):
-        self.entrata_automatica()
-        root.after(300000, self.start_timer)  
+    def aggiungi_interesse_periodico(self):
+        while True:
+            if self.interesse_attivo:
+                time.sleep(3600)  
+                interesse = self.saldo * 0.01  
+                self.saldo += interesse
+                self.aggiorna_saldo()
+                self.aggiungi_movimento(f"Interesse aggiunto: +€{interesse:.2f}")
+            time.sleep(3600)
+
+
+def avvia_conto_bancario(nome, cognome, data_nascita):
+    root = tk.Tk()
+    app = OmertaBank(root, nome, cognome, data_nascita)
+    root.mainloop()
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = OmertaBank(root)
+    app = LoginApp(root)
+    
     root.mainloop()
